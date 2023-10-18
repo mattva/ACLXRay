@@ -1,6 +1,7 @@
-1. Create custom table in ACLXRAy DB. 
-NB: ServerID is retrieved from ServerInfo.tsv file that must be present inside the zip, and it is required if importing the same information from different sources (different domains, for example), otherwise the importer will overwrite the table with the last imported file
+1. Create custom table in ACLXRAy DB. <BR>
+NB: ServerID is retrieved from ServerInfo.tsv file that must be present inside the zip, and it is required if importing the same information from different sources (different domains, for example), otherwise the importer will overwrite the table with the last imported file <BR>
 
+``` sql
 USE [ACLXRAY]
 GO
 SET ANSI_NULLS ON
@@ -42,9 +43,10 @@ GO
 
 ALTER TABLE [dbo].[CT_USER_EXTENDEDATTR] CHECK CONSTRAINT [FK_CT_USER_EXTENDEDATTR_SERVER_INFO]
 GO
-
+```
 
 2. Add columns to T_REP_USER_INFORMATION
+``` SQL
 ALTER TABLE [dbo].[T_REP_USER_INFORMATION]
 ADD [extensionattribute1] [nvarchar](256) NULL,
 	[extensionattribute2] [nvarchar](256) NULL,
@@ -62,8 +64,10 @@ ADD [extensionattribute1] [nvarchar](256) NULL,
 	[extensionattribute14] [nvarchar](256) NULL,
 	[extensionattribute15] [nvarchar](256) NULL
 GO
+```
 
 3. Modify sp_CreateUserInformationReport
+``` SQL
 USE [ACLXRAY]
 GO
 /****** Object:  StoredProcedure [dbo].[sp_CreateUserInformationReport]    Script Date: 10/18/2023 11:50:06 AM ******/
@@ -213,8 +217,10 @@ BEGIN
 	create nonclustered index IDX_T_REP_USER_INFORMATION_CKEY on [T_REP_USER_INFORMATION] (Ckey)
 	create nonclustered index IDX_T_REP_USER_INFORMATION_GEN on [T_REP_USER_INFORMATION] (Gen, Action) include(CKey)
 END
+```
 
 4. Add custom_map.txt to C:\ACLXRAY\DEPLOY\Format-V2
+
 extendedattributes, CT_USER_EXTENDEDATTR
 
 5. Copy CustomCollector_ExtendedAttributes.ps1 script to \\contoso.com\NETLOGON\ACLXRAY
