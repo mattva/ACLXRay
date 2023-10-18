@@ -220,13 +220,13 @@ END
 ```
 
 4. Add custom_map.txt to C:\ACLXRAY\DEPLOY\Format-V2
-
+```
 extendedattributes, CT_USER_EXTENDEDATTR
-
+```
 5. Copy CustomCollector_ExtendedAttributes.ps1 script to \\contoso.com\NETLOGON\ACLXRAY
 6. Add CustomCollector_ExtendedAttributes.ps1 script execution to \\contoso.com\NETLOGON\ACLXRAY\Get-DedicatedDC.cmd
 powershell.exe .\CustomCollector_ExtendedAttributes.ps1
 
-7. Report generation
-modify report structure in C:\ACLXRAY\DEPLOY\GenerateReports\reportGeneratorConfig.json
-modify source table in pbit to include all columns (advanced editor)
+7. Report generation <BR>
+modify report structure in C:\ACLXRAY\DEPLOY\GenerateReports\reportGeneratorConfig.json<BR>
+modify source table in pbit to include all columns (advanced editor)<BR>
