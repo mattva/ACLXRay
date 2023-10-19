@@ -67,8 +67,8 @@ extendedattributes, CT_USER_EXTENDEDATTR
 powershell.exe .\CustomCollector_ExtendedAttributes.ps1
 
 Report generation <BR>
-For example, to add the information to the user information report:
-2. Add columns to T_REP_USER_INFORMATION
+For example, to add the information to the user information report: <BR>
+1. Add columns to T_REP_USER_INFORMATION
 ``` SQL
 ALTER TABLE [dbo].[T_REP_USER_INFORMATION]
 ADD [extensionattribute1] [nvarchar](256) NULL,
@@ -88,8 +88,7 @@ ADD [extensionattribute1] [nvarchar](256) NULL,
 	[extensionattribute15] [nvarchar](256) NULL
 GO
 ```
-
-3. Modify sp_CreateUserInformationReport
+2. Modify sp_CreateUserInformationReport adding the new columns
 ``` SQL
 USE [ACLXRAY]
 GO
@@ -241,7 +240,6 @@ BEGIN
 	create nonclustered index IDX_T_REP_USER_INFORMATION_GEN on [T_REP_USER_INFORMATION] (Gen, Action) include(CKey)
 END
 ```
+3. modify report structure in C:\ACLXRAY\DEPLOY\GenerateReports\reportGeneratorConfig.json<BR>
 
-
-modify report structure in C:\ACLXRAY\DEPLOY\GenerateReports\reportGeneratorConfig.json<BR>
-modify source table in pbit to include all columns (advanced editor)<BR>
+4. modify source table in pbit to include all columns (advanced editor)<BR>
