@@ -64,6 +64,7 @@ extendedattributes, CT_USER_EXTENDEDATTR
 ```
 3. Copy CustomCollector_ExtendedAttributes.ps1 script to \\contoso.com\NETLOGON\ACLXRAY
 4. Add CustomCollector_ExtendedAttributes.ps1 script execution to \\contoso.com\NETLOGON\ACLXRAY\Get-DedicatedDC.cmd
+
 powershell.exe .\CustomCollector_ExtendedAttributes.ps1
 
 Report generation <BR>
