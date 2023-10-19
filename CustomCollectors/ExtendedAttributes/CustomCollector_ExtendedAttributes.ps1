@@ -78,7 +78,7 @@ Write-Log -Message "gathering user information" -logfile $logFile -Level INFO
 Try {
     Get-ADUser -Filter * -Properties * | Select-Object DisplayName,SamAccountName,ObjectSID,@{Name="ID";Expression={$_.ObjectGUID}},extensionattribute1,extensionattribute2,extensionattribute3,`
     extensionattribute4,extensionattribute5,extensionattribute6,extensionattribute7,extensionattribute8,extensionattribute9,`
-    extensionattribute10,extensionattribute11,extensionattribute12,extensionattribute13,extensionattribute14,extensionattribute15 -ErrorAction Stop `
+    extensionattribute10,extensionattribute11,extensionattribute12,extensionattribute13,extensionattribute14,extensionattribute15,managedBy -ErrorAction Stop `
     | ConvertTo-Csv -NoTypeInformation -Delimiter "`t"| ForEach-Object { $_ -replace '"' } | Set-Content $filename -Encoding UTF8
 } catch {
             $ErrorMessage = $_.Exception.Message
@@ -91,7 +91,7 @@ Write-Log -Message "gathering group information" -logfile $logFile -Level INFO
 Try {
     Get-ADGroup -Filter * -Properties * | Select-Object DisplayName,SamAccountName,ObjectSID,@{Name="ID";Expression={$_.ObjectGUID}},extensionattribute1,extensionattribute2,extensionattribute3,`
     extensionattribute4,extensionattribute5,extensionattribute6,extensionattribute7,extensionattribute8,extensionattribute9,`
-    extensionattribute10,extensionattribute11,extensionattribute12,extensionattribute13,extensionattribute14,extensionattribute15 -ErrorAction Stop `
+    extensionattribute10,extensionattribute11,extensionattribute12,extensionattribute13,extensionattribute14,extensionattribute15,managedBy -ErrorAction Stop `
     | ConvertTo-Csv -NoTypeInformation -Delimiter "`t"| Select-Object -Skip 1 | ForEach-Object { $_ -replace '"' } | Add-Content $filename -Encoding UTF8
 } catch {
             $ErrorMessage = $_.Exception.Message

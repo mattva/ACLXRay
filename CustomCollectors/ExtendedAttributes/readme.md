@@ -9,7 +9,7 @@ eucontosodc1.eu.contoso.com	eu.contoso.com	EU	S-1-5-21-1040395697-135212947-1176
 ```
 data tsv file example <BR>
 ```
-DisplayName	SamAccountName	ObjectSID	ID	extensionattribute1	extensionattribute2	extensionattribute3	extensionattribute4	extensionattribute5	extensionattribute6	extensionattribute7	extensionattribute8	extensionattribute9	extensionattribute10	extensionattribute11	extensionattribute12	extensionattribute13	extensionattribute14	extensionattribute15
+DisplayName	SamAccountName	ObjectSID	ID	extensionattribute1	extensionattribute2	extensionattribute3	extensionattribute4	extensionattribute5	extensionattribute6	extensionattribute7	extensionattribute8	extensionattribute9	extensionattribute10	extensionattribute11	extensionattribute12	extensionattribute13	extensionattribute14	extensionattribute15 managedBy
 aclxrayuser1	aclxrayuser1	S-1-5-21-3281217239-1686206460-833741877-33604	74fb78b3-dc38-4355-a3f1-0e78a0e7b853	EMSE5	ID 53042901V	Marketing												
 ```
 
@@ -41,6 +41,7 @@ CREATE TABLE [dbo].[CT_USER_EXTENDEDATTR](
 	[extensionattribute13] [nvarchar](1024) NULL,
 	[extensionattribute14] [nvarchar](1024) NULL,
 	[extensionattribute15] [nvarchar](1024) NULL,
+	[managedBy] [nvarchar](1024) NULL,
 	[DisplayName] [nvarchar](256) NULL,
 	[SamAccountName] [nvarchar](256) NULL,
  CONSTRAINT [PK_CT_USER_EXTENDEDATTR] PRIMARY KEY CLUSTERED 
@@ -86,10 +87,32 @@ ADD [extensionattribute1] [nvarchar](1024) NULL,
 	[extensionattribute12] [nvarchar](1024) NULL,
 	[extensionattribute13] [nvarchar](1024) NULL,
 	[extensionattribute14] [nvarchar](1024) NULL,
-	[extensionattribute15] [nvarchar](1024) NULL
+	[extensionattribute15] [nvarchar](1024) NULL,
+	[managedBy] [nvarchar](1024) NULL
 GO
 ```
-2. Modify sp_CreateUserInformationReport adding the new columns
+2. Add columns to T_REP_GROUP_EXPANSION
+``` SQL
+ALTER TABLE [dbo].[T_REP_GROUP_EXPANSION]
+ADD [extensionattribute1] [nvarchar](1024) NULL,
+	[extensionattribute2] [nvarchar](1024) NULL,
+	[extensionattribute3] [nvarchar](1024) NULL,
+	[extensionattribute4] [nvarchar](1024) NULL,
+	[extensionattribute5] [nvarchar](1024) NULL,
+	[extensionattribute6] [nvarchar](1024) NULL,
+	[extensionattribute7] [nvarchar](1024) NULL,
+	[extensionattribute8] [nvarchar](1024) NULL,
+	[extensionattribute9] [nvarchar](1024) NULL,
+	[extensionattribute10] [nvarchar](1024) NULL,
+	[extensionattribute11] [nvarchar](1024) NULL,
+	[extensionattribute12] [nvarchar](1024) NULL,
+	[extensionattribute13] [nvarchar](1024) NULL,
+	[extensionattribute14] [nvarchar](1024) NULL,
+	[extensionattribute15] [nvarchar](1024) NULL,
+	[managedBy] [nvarchar](1024) NULL
+GO
+```
+3. Modify sp_CreateUserInformationReport adding the new columns
 ``` SQL
 USE [ACLXRAY]
 GO
@@ -165,6 +188,7 @@ BEGIN
       ,[extensionattribute13]
       ,[extensionattribute14]
       ,[extensionattribute15]
+	  ,[managedBy]
 	  from T_REP_USER_INFORMATION R
 	  WHERE R.Gen = 1
 	  
@@ -231,6 +255,7 @@ BEGIN
     ,A.extensionattribute13
     ,A.extensionattribute14
     ,A.extensionattribute15
+	,A.managedBy
 	from Trustees T
 	join TrusteesAsPrincipals P on P.Id = T.Id
 	join CT_USER_EXTENDEDATTR A on A.Id = T.Id
@@ -241,6 +266,250 @@ BEGIN
 	create nonclustered index IDX_T_REP_USER_INFORMATION_GEN on [T_REP_USER_INFORMATION] (Gen, Action) include(CKey)
 END
 ```
-3. modify report structure in C:\ACLXRAY\DEPLOY\GenerateReports\reportGeneratorConfig.json<BR>
+4. Modify sp_CreateGroupExpansionReport adding the new columns
+```SQL
+USE [ACLXRAY]
+GO
+/****** Object:  StoredProcedure [dbo].[sp_CreateGroupExpansionReport]    Script Date: 10/19/2023 5:11:30 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- =============================================
+-- Author:		Paolo Monti
+-- Create date: 2019-11-30
+-- Modified date: 2019-12-02
+-- Modified date: 2020-01-21
+-- Modified date: 2020-04-21 - adjusted delete batch size and added checkpoint
+-- Modified date: 2021-02-26 - Changed how the table is purged from Gen0 entries
+-- Modified date: 2021-03-01 - added option (maxdop 1)
+-- Description:	This procedure insert GroupExpansion data into the corresponding table
+-- =============================================
+ALTER PROCEDURE [dbo].[sp_CreateGroupExpansionReport] 	
+AS
+BEGIN
+	-- SET NOCOUNT ON added to prevent extra result sets from
+	-- interfering with SELECT statements.
+	SET NOCOUNT ON;
 
-4. modify source table in pbit to include all columns (advanced editor)<BR>
+	declare @tm datetime2(3) = getdate()
+	-- Init
+	print 'Started at '+convert(nvarchar,getdate())
+
+	if exists (select * from sys.indexes S where S.name = 'IDX_T_REP_GROUP_EXPANSION_CKEY')
+		drop index IDX_T_REP_GROUP_EXPANSION_CKEY ON [dbo].[T_REP_GROUP_EXPANSION]
+	if exists (select * from sys.indexes S where S.name = 'IDX_T_REP_GROUP_EXPANSION_GEN')
+		drop index IDX_T_REP_GROUP_EXPANSION_GEN ON [dbo].[T_REP_GROUP_EXPANSION]
+
+
+	print 'Deleting Gen0 items'
+	select top 0 * into #tmp from T_REP_GROUP_EXPANSION
+	insert #tmp select 
+		[Id]
+      ,[Date]
+      ,[Action]
+      ,[CKey]
+      ,0 as Gen
+      ,[TrusteeID]
+      ,[GroupName]
+      ,[GroupSAM]
+      ,[GroupDomain]
+      ,[GroupScope]
+      ,[GroupDN]
+      ,[MemberName]
+      ,[MemberSAM]
+      ,[MemberDomain]
+      ,[MemberObjectClass]
+      ,[MembershipType]
+      ,[MemberDN]
+      ,[TotalGroup]
+      ,[ExplicitGroup]
+      ,[NestedGroup]
+      ,[TotalUser]
+      ,[ExplicitUser]
+      ,[NestedUser]
+      --,[IsCircular]
+	  ,[GroupSID]
+	  ,[extensionattribute1]
+      ,[extensionattribute2]
+      ,[extensionattribute3]
+      ,[extensionattribute4]
+      ,[extensionattribute5]
+      ,[extensionattribute6]
+      ,[extensionattribute7]
+      ,[extensionattribute8]
+      ,[extensionattribute9]
+      ,[extensionattribute10]
+      ,[extensionattribute11]
+      ,[extensionattribute12]
+      ,[extensionattribute13]
+      ,[extensionattribute14]
+      ,[extensionattribute15]
+	  ,[managedBy]
+	  from T_REP_GROUP_EXPANSION R
+	  where Gen = 1
+	  
+	  truncate table T_REP_GROUP_EXPANSION
+	  
+	  insert T_REP_GROUP_EXPANSION
+	  select * from #tmp
+
+	 drop table #tmp
+	print 'Deleted Gen0 items '+ convert(nvarchar,getdate())
+
+	
+    -- Insert statements for procedure here
+	print 'Inserting trustees ' + convert(nvarchar,getdate()) 
+	insert T_REP_GROUP_EXPANSION
+	(
+	[Id],
+	[Date],
+	[Action],
+	[CKey],
+	[Gen],
+	[TrusteeID],	
+	GroupName,
+	GroupSAM,
+	GroupDomain,
+	GroupScope,
+	GroupDN,
+	MemberName,
+	MemberSAM,
+	MemberDomain,
+	MemberObjectClass,
+	MembershipType,
+	MemberDN,
+	TotalGroup,
+	ExplicitGroup,
+	NestedGroup,
+	TotalUser,
+	ExplicitUser,
+	NestedUser
+	--,
+	--IsCircular
+	,[GroupSID]
+	  ,[extensionattribute1]
+      ,[extensionattribute2]
+      ,[extensionattribute3]
+      ,[extensionattribute4]
+      ,[extensionattribute5]
+      ,[extensionattribute6]
+      ,[extensionattribute7]
+      ,[extensionattribute8]
+      ,[extensionattribute9]
+      ,[extensionattribute10]
+      ,[extensionattribute11]
+      ,[extensionattribute12]
+      ,[extensionattribute13]
+      ,[extensionattribute14]
+      ,[extensionattribute15]
+	,[managedBy]
+	)	
+	select 
+	NEWID()
+	,@tm
+	,1
+	,HASHBYTES('SHA2_256',g.Authority+g.Sid+m.Authority+m.Sid)
+	,1	
+	,tg.Id,	
+	g.name, g.SamAccountName, g.Authority, tg.Scope, g.DistinguishedName
+	,m.name, m.SamAccountName, m.Authority, m.ObjectClass
+	,case when gm.MemberId is null then 'Nested' else 'Explicit' end as MembershipType
+	,m.DistinguishedName,
+	S.GroupTotal,
+	S.GroupDirect,
+	S.GroupNested,
+	S.PrincipalTotal,
+	S.PrincipalDirect,
+	S.PrincipalNested
+	--,case when geg2.GroupId is null then 0 else 1 end as IsCircular	
+	,g.Sid
+	,ea.extensionattribute1
+	,ea.extensionattribute2
+	,ea.extensionattribute3
+	,ea.extensionattribute4
+	,ea.extensionattribute5
+	,ea.extensionattribute6
+	,ea.extensionattribute7
+	,ea.extensionattribute8
+	,ea.extensionattribute9
+	,ea.extensionattribute10
+	,ea.extensionattribute11
+	,ea.extensionattribute12
+	,ea.extensionattribute13
+	,ea.extensionattribute14
+	,ea.extensionattribute15
+	,ea.managedBy
+	from trusteesasgroups tg with(nolock)
+	join trustees g with(nolock) on g.id = tg.id
+	join GroupExpandedGroups geg with(nolock) on geg.ExpandedMemberId = tg.id
+	join trustees m with(nolock) on m.id = geg.GroupId
+	join CT_USER_EXTENDEDATTR ea on ea.Id = tg.Id
+	left outer join GroupMembers gm with(nolock) on gm.GroupId = geg.ExpandedMemberId and gm.MemberId = geg.GroupId
+	--left outer join GroupExpandedGroups geg2 with(nolock) on geg2.ExpandedMemberId = geg.GroupId and geg2.GroupId = geg.ExpandedMemberId
+	join T_STATS s with(nolock) on s.TrusteeId = tg.id
+	where tg.Scope <> 'local'	
+	union
+	select 
+	NEWID()
+	,@tm
+	,1
+	,HASHBYTES('SHA2_256',g.Authority+g.Sid+m.Authority+m.Sid)
+	,1	
+	,tg.Id,
+	g.name, g.SamAccountName, g.Authority, tg.Scope, g.DistinguishedName
+	,m.name, m.SamAccountName, m.Authority, m.ObjectClass
+	,case when gm.MemberId is null then 'Nested' else 'Explicit' end as MembershipType
+	,m.DistinguishedName,
+	0,0,0,0,0,0
+	--,0
+	,g.Sid
+	,ea.extensionattribute1
+	,ea.extensionattribute2
+	,ea.extensionattribute3
+	,ea.extensionattribute4
+	,ea.extensionattribute5
+	,ea.extensionattribute6
+	,ea.extensionattribute7
+	,ea.extensionattribute8
+	,ea.extensionattribute9
+	,ea.extensionattribute10
+	,ea.extensionattribute11
+	,ea.extensionattribute12
+	,ea.extensionattribute13
+	,ea.extensionattribute14
+	,ea.extensionattribute15
+	,ea.managedBy
+	from trusteesasgroups tg with(nolock)
+	join trustees g with(nolock) on g.id = tg.id
+	join GroupExpandedPrincipals gep with(nolock) on gep.GroupId = tg.id
+	join trustees m with(nolock) on m.id = gep.ExpandedMemberId
+	join CT_USER_EXTENDEDATTR ea on ea.Id = tg.Id
+	left outer join GroupMembers gm with(nolock) on gm.GroupId = gep.GroupId and gm.MemberId = gep.ExpandedMemberId
+	where tg.Scope <> 'local'
+	--print 'Inserted groups '+convert(nvarchar,getdate())
+	--checkpoint;
+	--print 'Checkpoint ' + convert(nvarchar,getdate())
+	option (maxdop 1)
+	CREATE NONCLUSTERED INDEX [IDX_T_REP_GROUP_EXPANSION_CKEY] ON [dbo].[T_REP_GROUP_EXPANSION]
+	(
+		[CKey] ASC
+	)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+	CREATE NONCLUSTERED INDEX [IDX_T_REP_GROUP_EXPANSION_GEN] ON [dbo].[T_REP_GROUP_EXPANSION]
+	(
+		[Gen] ASC
+		,[Action] ASC
+	)
+	INCLUDE([CKey])
+	WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+	print 'Finished '+convert(nvarchar,getdate())
+END
+```
+5. modify "headers" and "exportQuery" in C:\ACLXRAY\DEPLOY\GenerateReports\reportGeneratorConfig.json for the "Group Expansion Report" and "User Information Report" adding the new columns<BR>
+
+6. modify the source query in pbit for the "User Information Report" and "Group Expansion Report" tebles to include all columns (advanced editor -> Columns=##)<BR>
+```
+= Csv.Document(File.Contents(ReportsFolder & "\User Information Report.CSV"),[Delimiter=",", Columns=43, Encoding=65001, QuoteStyle=QuoteStyle.None])
+
+= Csv.Document(File.Contents(ReportsFolder & "\Group Expansion Report.CSV"),[Delimiter=",", Columns=34, Encoding=65001, QuoteStyle=QuoteStyle.None])
+```
