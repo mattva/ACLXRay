@@ -1,6 +1,19 @@
-1. Create custom table in ACLXRAy DB. <BR>
-NB: ServerID is retrieved from ServerInfo.tsv file that must be present inside the zip, and it is required if importing the same information from different sources (different domains, for example), otherwise the importer will overwrite the table with the last imported file <BR>
+Import datos in SQL:
 
+NB: ServerID is retrieved from ServerInfo.tsv file that must be present inside the zip, and it is required if importing the same information from different sources (different domains, for example), otherwise the importer will overwrite the table with the last imported file <BR>
+The script must copy a zip file with the ServerInfo and data tsv files into the tools machine Client shared folder.<BR>
+ServerInfo tsv file example:<BR>
+```
+ServerFqdn	Authority	NetbiosDomainName	ServerSID	Timestamp	GUID	sAMAccountName	ForestRootDNS
+eucontosodc1.eu.contoso.com	eu.contoso.com	EU	S-1-5-21-1040395697-135212947-117614780-1001	2023-10-18 11:01:01.239	821426bf-0de0-468a-aa7d-61a062a22978	eucontosodc1	contoso.com
+```
+data tsv file example <BR>
+```
+DisplayName	SamAccountName	ObjectSID	ID	extensionattribute1	extensionattribute2	extensionattribute3	extensionattribute4	extensionattribute5	extensionattribute6	extensionattribute7	extensionattribute8	extensionattribute9	extensionattribute10	extensionattribute11	extensionattribute12	extensionattribute13	extensionattribute14	extensionattribute15
+aclxrayuser1	aclxrayuser1	S-1-5-21-3281217239-1686206460-833741877-33604	74fb78b3-dc38-4355-a3f1-0e78a0e7b853	EMSE5	ID 53042901V	Marketing												
+```
+
+1. Create custom table in ACLXRAy DB. <BR>
 ``` sql
 USE [ACLXRAY]
 GO
@@ -45,6 +58,16 @@ ALTER TABLE [dbo].[CT_USER_EXTENDEDATTR] CHECK CONSTRAINT [FK_CT_USER_EXTENDEDAT
 GO
 ```
 
+2. Add custom_map.txt to C:\ACLXRAY\DEPLOY\Format-V2
+```
+extendedattributes, CT_USER_EXTENDEDATTR
+```
+3. Copy CustomCollector_ExtendedAttributes.ps1 script to \\contoso.com\NETLOGON\ACLXRAY
+4. Add CustomCollector_ExtendedAttributes.ps1 script execution to \\contoso.com\NETLOGON\ACLXRAY\Get-DedicatedDC.cmd
+powershell.exe .\CustomCollector_ExtendedAttributes.ps1
+
+Report generation <BR>
+For example, to add the information to the user information report:
 2. Add columns to T_REP_USER_INFORMATION
 ``` SQL
 ALTER TABLE [dbo].[T_REP_USER_INFORMATION]
@@ -219,14 +242,6 @@ BEGIN
 END
 ```
 
-4. Add custom_map.txt to C:\ACLXRAY\DEPLOY\Format-V2
-```
-extendedattributes, CT_USER_EXTENDEDATTR
-```
-5. Copy CustomCollector_ExtendedAttributes.ps1 script to \\contoso.com\NETLOGON\ACLXRAY
-6. Add CustomCollector_ExtendedAttributes.ps1 script execution to \\contoso.com\NETLOGON\ACLXRAY\Get-DedicatedDC.cmd
-powershell.exe .\CustomCollector_ExtendedAttributes.ps1
 
-7. Report generation <BR>
 modify report structure in C:\ACLXRAY\DEPLOY\GenerateReports\reportGeneratorConfig.json<BR>
 modify source table in pbit to include all columns (advanced editor)<BR>
