@@ -68,10 +68,16 @@ Write-Log -Message "starting custom collector." -logfile $logFile -Level INFO
 
 Write-Log -Message "Colecting ServerInfo" -logfile $logFile -Level INFO
 $ts=get-date -Format "yyyy-MM-dd HH:mm:ss.fff"
-Get-ADComputer -Filter {dnshostname -eq $hostname} | Select-Object @{name="ServerFqdn";Expression={$_.dnshostname}},@{name="Authority";Expression={(get-addomain).DNSRoot}}, `
-@{name="NetbiosDomainName";Expression={$_.Name}},@{name="ServerSID";Expression={$_.SID}},@{name="Timestamp";Expression={$ts}},@{name="GUID";Expression={$_.ObjectGUID}}, `
-@{name="sAMAccountName";Expression={$_.Name}},@{name="ForestRootDNS";Expression={(get-addomain).Forest}} `
-| ConvertTo-Csv -NoTypeInformation -Delimiter "`t" | ForEach-Object { $_ -replace '"' } | Set-Content $ServerInfofilename -Encoding UTF8
+Try {
+    Get-ADComputer -Filter {dnshostname -eq $hostname} | Select-Object @{name="ServerFqdn";Expression={$_.dnshostname}},@{name="Authority";Expression={(get-addomain).DNSRoot}}, `
+    @{name="NetbiosDomainName";Expression={$_.Name}},@{name="ServerSID";Expression={$_.SID}},@{name="Timestamp";Expression={$ts}},@{name="GUID";Expression={$_.ObjectGUID}}, `
+    @{name="sAMAccountName";Expression={$_.Name}},@{name="ForestRootDNS";Expression={(get-addomain).Forest}} -ErrorAction Stop `
+    | ConvertTo-Csv -NoTypeInformation -Delimiter "`t" | ForEach-Object { $_ -replace '"' } | Set-Content $ServerInfofilename -Encoding UTF8
+} catch {
+            $ErrorMessage = $_.Exception.Message
+            Write-Log -Message "$ErrorMessage" -logfile $logFile -Level ERROR
+            continue
+}
 
 Write-Log -Message "gathering user information" -logfile $logFile -Level INFO
 
@@ -79,7 +85,14 @@ Try {
     Get-ADUser -Filter * -Properties * | Select-Object DisplayName,SamAccountName,ObjectSID,@{Name="ID";Expression={$_.ObjectGUID}},extensionattribute1,extensionattribute2,extensionattribute3,`
     extensionattribute4,extensionattribute5,extensionattribute6,extensionattribute7,extensionattribute8,extensionattribute9,`
     extensionattribute10,extensionattribute11,extensionattribute12,extensionattribute13,extensionattribute14,extensionattribute15,managedBy -ErrorAction Stop `
-    | ConvertTo-Csv -NoTypeInformation -Delimiter "`t"| ForEach-Object { $_ -replace '"' } | Set-Content $filename -Encoding UTF8
+    | ForEach-Object {
+        foreach ($property in $_.PSObject.Properties) {
+            if ($property.Value -is [string]) {
+                $property.Value = $property.Value.Replace("`t", " ")
+            }
+        }
+        $_
+    } | ConvertTo-Csv -NoTypeInformation -Delimiter "`t"| ForEach-Object { $_ -replace '"' } | Set-Content $filename -Encoding UTF8
 } catch {
             $ErrorMessage = $_.Exception.Message
             Write-Log -Message "$ErrorMessage" -logfile $logFile -Level ERROR
@@ -92,7 +105,14 @@ Try {
     Get-ADGroup -Filter * -Properties * | Select-Object DisplayName,SamAccountName,ObjectSID,@{Name="ID";Expression={$_.ObjectGUID}},extensionattribute1,extensionattribute2,extensionattribute3,`
     extensionattribute4,extensionattribute5,extensionattribute6,extensionattribute7,extensionattribute8,extensionattribute9,`
     extensionattribute10,extensionattribute11,extensionattribute12,extensionattribute13,extensionattribute14,extensionattribute15,managedBy -ErrorAction Stop `
-    | ConvertTo-Csv -NoTypeInformation -Delimiter "`t"| Select-Object -Skip 1 | ForEach-Object { $_ -replace '"' } | Add-Content $filename -Encoding UTF8
+    | ForEach-Object {
+        foreach ($property in $_.PSObject.Properties) {
+            if ($property.Value -is [string]) {
+                $property.Value = $property.Value.Replace("`t", " ")
+            }
+        }
+        $_
+    } | ConvertTo-Csv -NoTypeInformation -Delimiter "`t"| Select-Object -Skip 1 | ForEach-Object { $_ -replace '"' } | Add-Content $filename -Encoding UTF8
 } catch {
             $ErrorMessage = $_.Exception.Message
             Write-Log -Message "$ErrorMessage" -logfile $logFile -Level ERROR

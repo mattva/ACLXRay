@@ -173,7 +173,7 @@ BEGIN
       ,[LastLogonTimestamp]
 	  ,[OwnerName]
 	  ,[Owner]
-<>	  **,[extensionattribute1]
+	  ,[extensionattribute1]
       ,[extensionattribute2]
       ,[extensionattribute3]
       ,[extensionattribute4]
@@ -188,7 +188,7 @@ BEGIN
       ,[extensionattribute13]
       ,[extensionattribute14]
       ,[extensionattribute15]
-	  ,[managedBy]**
+	  ,[managedBy]
 	  from T_REP_USER_INFORMATION R
 	  WHERE R.Gen = 1
 	  
@@ -240,7 +240,7 @@ BEGIN
 	P.LastLogonTimestamp
 	,O.Name
 	,O.SID
-	**,A.extensionattribute1
+	,A.extensionattribute1
     ,A.extensionattribute2
     ,A.extensionattribute3
     ,A.extensionattribute4
@@ -255,10 +255,10 @@ BEGIN
     ,A.extensionattribute13
     ,A.extensionattribute14
     ,A.extensionattribute15
-	,A.managedBy**
+	,A.managedBy
 	from Trustees T
 	join TrusteesAsPrincipals P on P.Id = T.Id
-	**join CT_USER_EXTENDEDATTR A on A.Id = T.Id**
+	join CT_USER_EXTENDEDATTR A on A.Id = T.Id
 	left outer join Trustees O on O.Sid = T.OwnerSid
 	checkpoint;
 	
