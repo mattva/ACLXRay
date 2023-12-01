@@ -84,7 +84,7 @@ Write-Log -Message "gathering user information" -logfile $logFile -Level INFO
 Try {
     Get-ADUser -Filter * -Properties * | Select-Object DisplayName,SamAccountName,ObjectSID,@{Name="ID";Expression={$_.ObjectGUID}},extensionattribute1,extensionattribute2,extensionattribute3,`
     extensionattribute4,extensionattribute5,extensionattribute6,extensionattribute7,extensionattribute8,extensionattribute9,`
-    extensionattribute10,extensionattribute11,extensionattribute12,extensionattribute13,extensionattribute14,extensionattribute15,managedBy -ErrorAction Stop `
+    extensionattribute10,extensionattribute11,extensionattribute12,extensionattribute13,extensionattribute14,extensionattribute15,ObjectSID,@{Name="managedBy";Expression={$_.manager}} -ErrorAction Stop `
     | ForEach-Object {
         foreach ($property in $_.PSObject.Properties) {
             if ($property.Value -is [string]) {
